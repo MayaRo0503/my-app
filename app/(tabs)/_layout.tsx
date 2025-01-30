@@ -1,43 +1,63 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+import React from "react";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Tabs } from "expo-router";
+import Colors from "@/constants/Colors";
+import Entypo from "@expo/vector-icons/Entypo";
+import AntDesign from "@expo/vector-icons/AntDesign";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+// Custom icon component for the bottom tab bar.
+function TabBarIcon(props: {
+  name: React.ComponentProps<typeof FontAwesome>["name"];
+  color: string;
+}) {
+  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  // Manually setting the color scheme to "light" for demonstration purposes.
+  const colorScheme = "light";
 
+  // Rendering a Tabs layout with three routes: Home, Shorts, and Favorites.
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarItemStyle: {
+          height: 80,
+          paddingTop: 10,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          headerShown: false,
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <Entypo name="home" size={22} color="black" />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="Shorts"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          headerShown: false,
+          title: "Shorts",
+          tabBarIcon: ({ color }) => (
+            <AntDesign name="videocamera" size={22} color="black" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="Favorites"
+        options={{
+          headerShown: false,
+          title: "Favorites",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="heart" size={22} color="black" />
+          ),
         }}
       />
     </Tabs>

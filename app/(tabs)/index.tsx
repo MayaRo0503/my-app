@@ -1,74 +1,168 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import TopBar from "@/components/ytComponents/TopBar";
+import FilterBar from "@/components/ytComponents/FilterBar";
+import { router } from "expo-router";
+import { YOUTUBE_API_KEY, YOUTUBE_API_URL } from "@env";
+import { Ionicons } from "@expo/vector-icons";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+// The main home screen that displays a list of videos based on selected category.
+type VideoItem = {
+  id: {
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    thumbnails: {
+      medium: {
+        url: string;
+      };
+    };
+    channelTitle: string;
+    publishedAt: string;
+  };
+};
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+const index = () => {
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("popular");
+
+  // Fetch videos from the YouTube API whenever the selected category changes.
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `${YOUTUBE_API_URL}?part=snippet&maxResults=10&q=${selectedCategory}&type=video&key=${YOUTUBE_API_KEY}`
+        );
+        const data = await response.json();
+        if (response.ok) {
+          setVideos(data.items);
+        } else {
+          throw new Error(data.error.message || "Failed to fetch videos");
+        }
+      } catch (err: any) {
+        setError(err.message || "An unknown error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, [selectedCategory]);
+
+  // Helper to format date strings into a more human-friendly format.
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Renders a single video item in the list.
+  const renderVideoItem = ({ item }: { item: VideoItem }) => (
+    <TouchableOpacity
+      style={styles.videoItem}
+      onPress={() => {
+        router.push({
+          pathname: "/screens/VideoPlayer",
+          params: { videoId: item.id.videoId },
+        });
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Play video: ${item.snippet.title}`}
+    >
+      <Image
+        source={{ uri: item.snippet.thumbnails.medium.url }}
+        style={styles.thumbnail}
+        accessibilityRole="image"
+        accessibilityLabel={`Thumbnail for ${item.snippet.title}`}
+      />
+      <View style={styles.videoInfo}>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.snippet.title}
+        </Text>
+        <Text style={styles.channelTitle}>{item.snippet.channelTitle}</Text>
+        <Text style={styles.publishDate}>
+          {formatDate(item.snippet.publishedAt)}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
-}
 
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* The top bar includes logo and search functionality */}
+      <TopBar />
+      {/* The filter bar to switch between categories */}
+      <FilterBar
+        setCategory={setSelectedCategory}
+        selectedCategory={selectedCategory}
+      />
+      <View style={styles.content}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#FF0000" />
+        ) : error ? (
+          // Display an error message if something goes wrong with the API request
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color="#FF0000" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : (
+          // The list of videos
+          <FlatList
+            data={videos}
+            renderItem={renderVideoItem}
+            keyExtractor={(item) => item.id.videoId}
+            contentContainerStyle={styles.list}
+          />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+// Styles for the home screen layout and list items.
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: "#f0f0f0" },
+  content: { flex: 1, padding: 10 },
+  list: { paddingBottom: 20 },
+  videoItem: {
+    marginBottom: 15,
+    backgroundColor: "white",
+    borderRadius: 8,
+    overflow: "hidden",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  thumbnail: { height: 200, width: "100%" },
+  videoInfo: { padding: 10 },
+  title: { fontWeight: "bold", fontSize: 16, marginBottom: 5, color: "#333" },
+  channelTitle: { fontSize: 14, color: "#666", marginBottom: 3 },
+  publishDate: { fontSize: 12, color: "#999" },
+  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  errorText: {
+    color: "#FF0000",
+    textAlign: "center",
+    marginTop: 10,
+    fontSize: 16,
   },
 });
+
+export default index;
